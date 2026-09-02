@@ -1,29 +1,21 @@
 #!/usr/bin/env bash
+# Create the GitHub repo for this artwork checkout (if missing) and push main.
+# Needs the GitHub CLI (`gh`) authenticated with repo-creation rights.
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-ORG="reckon-db-org"
-REPO="reckon-artwork"
+ORG="${ORG:-reckon-db-org}"
+REPO="${REPO:-reckon-artwork}"
+cd "$(dirname "$0")/.."
 
-# Create repo on Codeberg
-echo "Creating $ORG/$REPO on Codeberg..."
-curl -sf -X POST "https://codeberg.org/api/v1/orgs/$ORG/repos" \
-  -H "Authorization: token $CODEBERG_GOD_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"name\": \"$REPO\",
-    \"description\": \"Official ReckonDB brand assets — logos, icons, colour palette\",
-    \"private\": false,
-    \"auto_init\": false,
-    \"default_branch\": \"main\"
-  }" | python3 -c "import sys,json; d=json.load(sys.stdin); print('Created:', d['html_url'])"
+command -v gh >/dev/null || { echo "gh (GitHub CLI) is required" >&2; exit 64; }
 
-# Init git and push
-cd "$REPO_DIR"
-git init -b main
-git add -A
-git commit -m "chore: initial artwork — logos, favicon, palette"
-git remote add origin "https://codeberg.org/$ORG/$REPO.git"
+if gh repo view "$ORG/$REPO" >/dev/null 2>&1; then
+    echo "$ORG/$REPO already exists on GitHub"
+else
+    echo "Creating $ORG/$REPO on GitHub..."
+    gh repo create "$ORG/$REPO" --public --description "Reckon brand assets"
+fi
+
+git remote get-url origin >/dev/null 2>&1 || git remote add origin "git@github.com:$ORG/$REPO.git"
 git push -u origin main
-
-echo "Done: https://codeberg.org/$ORG/$REPO"
+echo "Done: https://github.com/$ORG/$REPO"
